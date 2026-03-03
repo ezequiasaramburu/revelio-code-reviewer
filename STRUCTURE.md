@@ -1,3 +1,8 @@
+### Revelio
+
+### Project structure
+
+```text
 revelio/
 │
 ├── src/ # All application source code
@@ -59,3 +64,4 @@ revelio/
 ├── package.json
 ├── tsconfig.json
 └── README.md
+```

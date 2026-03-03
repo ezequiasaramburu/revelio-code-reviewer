@@ -1,0 +1,26 @@
+version: "3.8"
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+
+  server:
+    build: ..
+    command: npm run dev
+    ports: ["3000:3000"]
+    env_file: ../.env
+    depends_on:
+      redis: { condition: service_healthy }
+    volumes: ["../src:/app/src"]
+
+  worker:
+    build: ..
+    command: npm run worker
+    env_file: ../.env
+    depends_on:
+      redis: { condition: service_healthy }
+    volumes: ["../src:/app/src"]
