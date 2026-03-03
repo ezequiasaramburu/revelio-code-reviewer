@@ -15,8 +15,10 @@ export function chunkDiff(rawDiff: string, maxLines = 400): DiffChunk[] {
   if (!rawDiff.trim()) return [];
   return rawDiff.split(/^diff --git /m).filter(Boolean).flatMap(block => {
     const lines = block.split('\n');
-    const filename = lines[0].split(' b/')[1] ?? lines[0];
+    const filenameLine = lines[0] ?? '';
+    const filename = filenameLine.split(' b/')[1] ?? filenameLine;
     const firstHunk = lines.findIndex(l => l.startsWith('@@'));
+    if (firstHunk === -1) return [];
     const header = lines.slice(0, firstHunk).join('\n');
     const hunks = lines.slice(firstHunk).join('\n').split(/^(?=@@)/m).filter(Boolean);
     const chunks: DiffChunk[] = [];
@@ -24,10 +26,13 @@ export function chunkDiff(rawDiff: string, maxLines = 400): DiffChunk[] {
 
     const flush = () => {
       if (!current.length) return;
+      const safeFilename = filename ?? 'unknown';
       chunks.push({
-        filename, language: LANG_MAP[filename.split('.').pop() ?? ''] ?? 'plaintext',
-        content: `diff --git a/${filename} b/${filename}\n${header}\n${current.join('\n')}`,
-        startLine, endLine: startLine + lineCount,
+        filename: safeFilename,
+        language: LANG_MAP[safeFilename.split('.').pop() ?? ''] ?? 'plaintext',
+        content: `diff --git a/${safeFilename} b/${safeFilename}\n${header}\n${current.join('\n')}`,
+        startLine,
+        endLine: startLine + lineCount,
       });
       startLine += lineCount; current = []; lineCount = 0;
     };

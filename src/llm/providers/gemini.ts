@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, type Content } from '@google/generative-ai';
 import { LLMProvider, LLMMessage, LLMResponse, ProviderConfig } from '../types';
 
 export class GeminiProvider implements LLMProvider {
@@ -12,13 +12,29 @@ export class GeminiProvider implements LLMProvider {
   }
 
   async complete(messages: LLMMessage[], systemPrompt: string): Promise<LLMResponse> {
-    const genModel = this.client.getGenerativeModel({ model: this.model, systemInstruction: systemPrompt });
+    const systemInstruction: Content = {
+      role: 'user',
+      parts: [{ text: systemPrompt }],
+    };
+    const genModel = this.client.getGenerativeModel({
+      model: this.model,
+      systemInstruction,
+    });
     const history = messages.slice(0, -1).map(m => ({
-      role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }],
-    }));
-    const result = await genModel.startChat({ history }).sendMessage(messages.at(-1)!.content);
-    return { content: result.response.text(), model: this.model,
-      usage: { inputTokens: result.response.usageMetadata?.promptTokenCount ?? 0,
-               outputTokens: result.response.usageMetadata?.candidatesTokenCount ?? 0 } };
+      role: m.role === 'user' ? 'user' : 'model',
+      parts: [{ text: m.content }],
+    })) as Content[];
+    const last = messages.at(-1)!;
+    const chat = genModel.startChat({ history });
+    const result = await chat.sendMessage(last.content);
+    const usageMeta = (result.response as any).usageMetadata;
+    return {
+      content: result.response.text(),
+      model: this.model,
+      usage: {
+        inputTokens: usageMeta?.promptTokenCount ?? 0,
+        outputTokens: usageMeta?.candidatesTokenCount ?? 0,
+      },
+    };
   }
 }
