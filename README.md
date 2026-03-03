@@ -1,8 +1,6 @@
 ## Revelio
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-blue.svg)](CONTRIBUTING.md)
-[![GitHub stars](https://img.shields.io/github/stars/<your-org>/revelio?style=social)](https://github.com/<your-org>/revelio/stargazers)
 
 **Revelio** is a self-hosted, open source, AI-powered pull request reviewer for GitHub.  
 It behaves like a pragmatic senior engineer: **no nitpicks, no style wars, only comments on bugs, security issues, logic errors, and architectural problems** worth blocking a merge.
@@ -45,13 +43,13 @@ flowchart LR
 
 Local development and production infrastructure are intentionally isomorphic:
 
-| **Local**            | **AWS**                  |
-| -------------------- | ------------------------ |
-| Fastify on `:3000`   | API Gateway + Lambda     |
-| BullMQ + Redis       | SQS Queue                |
-| Worker process       | ECS Fargate              |
-| `.env` file          | SSM Parameter Store      |
-| `docker-compose.yml` | CDK stack (`infra/`)     |
+| **Local**            | **AWS**              |
+| -------------------- | -------------------- |
+| Fastify on `:3000`   | API Gateway + Lambda |
+| BullMQ + Redis       | SQS Queue            |
+| Worker process       | ECS Fargate          |
+| `.env` file          | SSM Parameter Store  |
+| `docker-compose.yml` | CDK stack (`infra/`) |
 
 If it does not translate cleanly to AWS, it does not belong in the local design.
 
@@ -297,4 +295,3 @@ Please:
 ## License
 
 Revelio is released under the **MIT License**.
-
