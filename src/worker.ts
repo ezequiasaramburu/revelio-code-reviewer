@@ -7,6 +7,7 @@ import { GitHubClient } from './github/client';
 import { fetchPRDiff } from './github/diff';
 import { chunkDiff } from './diff/chunker';
 import { createProviderFromEnv } from './llm/factory';
+import { createRateLimitedProvider } from './llm/rate-limit';
 import { SYSTEM_PROMPT } from './review/constants';
 import { buildUserPrompt } from './review/prompt';
 import { parseReviewResponse } from './review/parser';
@@ -58,7 +59,7 @@ async function handleReviewJob(job: Job<ReviewJobData>): Promise<void> {
     return;
   }
 
-  const provider = createProviderFromEnv();
+  const provider = createRateLimitedProvider(createProviderFromEnv());
   const allComments: { path: string; line: number; body: string }[] = [];
   const categories = review.categories;
   const minSeverity = review.minSeverity;
