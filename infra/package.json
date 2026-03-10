@@ -1,0 +1,22 @@
+{
+  "name": "infra",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "tsc",
+    "cdk:synth": "cdk synth"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "aws-cdk-lib": "^2.241.0",
+    "constructs": "^10.5.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^20.12.7",
+    "source-map-support": "^0.5.21",
+    "aws-cdk": "^2.241.0"
+  }
+}
