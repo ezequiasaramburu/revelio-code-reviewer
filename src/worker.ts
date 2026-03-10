@@ -3,6 +3,14 @@ import { Worker, Job } from 'bullmq';
 import IORedis from 'ioredis';
 import { ReviewJobData } from './queue/jobs';
 import { REVIEW_QUEUE_NAME } from './queue/constants';
+import { GitHubClient } from './github/client';
+import { fetchPRDiff } from './github/diff';
+import { chunkDiff } from './diff/chunker';
+import { createProviderFromEnv } from './llm/factory';
+import { SYSTEM_PROMPT } from './review/constants';
+import { buildUserPrompt } from './review/prompt';
+import { parseReviewResponse } from './review/parser';
+import { postReview } from './review/poster';
 
 dotenv.config();
 
@@ -14,15 +22,63 @@ function createRedisConnection() {
 
 async function handleReviewJob(job: Job<ReviewJobData>): Promise<void> {
   const data = job.data;
-  // Later phases will fetch diff, call LLM, and post review.
-  // eslint-disable-next-line no-console
-  console.log('Processing review job', {
-    jobId: job.id,
-    installationId: data.installationId,
-    owner: data.owner,
-    repo: data.repo,
-    pullNumber: data.pullNumber,
-    sha: data.sha,
+  const { installationId, owner, repo, pullNumber } = data;
+
+  const github = new GitHubClient();
+  const octokit = await github.forInstallation(installationId);
+
+  const { raw } = await fetchPRDiff(octokit, { owner, repo, pullNumber });
+  if (!raw.trim()) {
+    // No diff to review – post an approval and exit early.
+    await postReview({
+      client: octokit,
+      owner,
+      repo,
+      pullNumber,
+      comments: [],
+    });
+    return;
+  }
+
+  const chunks = chunkDiff(raw);
+  if (!chunks.length) {
+    await postReview({
+      client: octokit,
+      owner,
+      repo,
+      pullNumber,
+      comments: [],
+    });
+    return;
+  }
+
+  const provider = createProviderFromEnv();
+  const allComments: { path: string; line: number; body: string }[] = [];
+  const categories = ['bug', 'security', 'logic', 'architecture'];
+  const minSeverity = 'medium';
+
+  for (const chunk of chunks) {
+    const userPrompt = buildUserPrompt(chunk, categories, minSeverity);
+    const response = await provider.complete(
+      [{ role: 'user', content: userPrompt }],
+      SYSTEM_PROMPT,
+    );
+    const parsed = parseReviewResponse(response.content, minSeverity);
+    for (const c of parsed) {
+      allComments.push({
+        path: c.filename,
+        line: c.line,
+        body: `**${c.title}**\n\n${c.body}`,
+      });
+    }
+  }
+
+  await postReview({
+    client: octokit,
+    owner,
+    repo,
+    pullNumber,
+    comments: allComments,
   });
 }
 
