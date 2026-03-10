@@ -11,3 +11,9 @@ export function makeReviewJobId(data: ReviewJobData): string {
   return `${data.owner}/${data.repo}#${data.pullNumber}@${shortSha}`;
 }
 
+export interface ReviewDeadLetterJob {
+  job: ReviewJobData;
+  error: string;
+}
+
+

@@ -1,7 +1,7 @@
 import { Queue, JobsOptions } from 'bullmq';
 import IORedis from 'ioredis';
-import { ReviewJobData, makeReviewJobId } from './jobs';
-import { REVIEW_QUEUE_NAME } from './constants';
+import { ReviewJobData, ReviewDeadLetterJob, makeReviewJobId } from './jobs';
+import { REVIEW_QUEUE_NAME, REVIEW_DLQ_NAME } from './constants';
 
 function createRedisConnection() {
   const host = process.env.REDIS_HOST ?? 'localhost';
@@ -12,6 +12,11 @@ function createRedisConnection() {
 export function createReviewQueue(): Queue<ReviewJobData> {
   const connection = createRedisConnection();
   return new Queue<ReviewJobData>(REVIEW_QUEUE_NAME, { connection } as any);
+}
+
+export function createReviewDlqQueue(): Queue<ReviewDeadLetterJob> {
+  const connection = createRedisConnection();
+  return new Queue<ReviewDeadLetterJob>(REVIEW_DLQ_NAME, { connection } as any);
 }
 
 export async function enqueueReview(
@@ -29,4 +34,15 @@ export async function enqueueReview(
     ...options,
   });
 }
+
+export async function enqueueDeadLetter(
+  queue: Queue<ReviewDeadLetterJob>,
+  job: ReviewDeadLetterJob,
+): Promise<void> {
+  await queue.add(REVIEW_DLQ_NAME, job, {
+    removeOnComplete: 1000,
+    removeOnFail: 1000,
+  });
+}
+
 

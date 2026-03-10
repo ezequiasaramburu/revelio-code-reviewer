@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import { Worker, Job } from 'bullmq';
 import IORedis from 'ioredis';
-import { ReviewJobData } from './queue/jobs';
+import { ReviewJobData, ReviewDeadLetterJob } from './queue/jobs';
 import { REVIEW_QUEUE_NAME } from './queue/constants';
 import { GitHubClient } from './github/client';
 import { fetchPRDiff } from './github/diff';
@@ -13,6 +13,7 @@ import { parseReviewResponse } from './review/parser';
 import { postReview } from './review/poster';
 import { loadConfig } from './config/loader';
 import { filterChunksByConfig } from './worker/filters';
+import { createReviewDlqQueue, enqueueDeadLetter } from './queue/queue';
 
 dotenv.config();
 
@@ -95,6 +96,8 @@ async function main(): Promise<void> {
     concurrency: 5,
   });
 
+  const dlq = createReviewDlqQueue();
+
   worker.on('completed', job => {
     // eslint-disable-next-line no-console
     console.log('Job completed', { id: job.id });
@@ -103,6 +106,15 @@ async function main(): Promise<void> {
   worker.on('failed', (job, err) => {
     // eslint-disable-next-line no-console
     console.error('Job failed', { id: job?.id, err });
+
+    if (job) {
+      const deadLetter: ReviewDeadLetterJob = {
+        job: job.data,
+        error: err instanceof Error ? err.message : String(err),
+      };
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      enqueueDeadLetter(dlq, deadLetter);
+    }
   });
 }
 
